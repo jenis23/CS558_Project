@@ -48,6 +48,12 @@ public class MapViewActivity extends Activity implements LocationListener,
 	private Button btnStart, btnStop;
 	private String provider;
 
+	File root, dir, sensorFile;
+	FileOutputStream fOut;
+	// ObjectOutputStream myOutWriter;
+	private Sensor mAccelerometer;
+	private FileWriter writer;
+
 	// private Button btnUpload;
 
 	@SuppressLint("NewApi")
@@ -56,100 +62,123 @@ public class MapViewActivity extends Activity implements LocationListener,
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
-		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		sensorData = new ArrayList<AccelLocData>();
-		btnStart = (Button) findViewById(R.id.btnStart);
-		btnStop = (Button) findViewById(R.id.btnStop);
-		btnStart.setOnClickListener(this);
-		btnStop.setOnClickListener(this);
-		btnStart.setEnabled(true);
-		btnStop.setEnabled(false);
+		try {
+			root = android.os.Environment.getExternalStorageDirectory();
+			dir = new File(root.getAbsolutePath() + "/roadmonitor");
+			dir.mkdirs();
 
-		int status = GooglePlayServicesUtil
-				.isGooglePlayServicesAvailable(getBaseContext());
-		if (status != ConnectionResult.SUCCESS) { // Google Play Services are
-													// not available
+			File oldFile = new File(dir, "data.txt");
 
-			int requestCode = 10;
-			Dialog dialog = GooglePlayServicesUtil.getErrorDialog(status, this,
-					requestCode);
-			dialog.show();
+			boolean deleted = oldFile.delete();
+			System.out.println("Delete status = " + deleted);
+			sensorFile = new File(dir, "data.txt");
 
-		} else { // Google Play Services are available
+			sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+			mAccelerometer = sensorManager
+					.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
-			// Getting reference to the SupportMapFragment of activity_main.xml
-			// SupportMapFragment supportMapFragment = (MapFragment)
-			// getFragmentManager().findFragmentById(R.id.map);
 
-			// Getting GoogleMap object from the fragment
-			googleMap = ((MapFragment) getFragmentManager().findFragmentById(
-					R.id.map)).getMap();
-			// googleMap = supportMapFragment.getMap();
+			btnStart = (Button) findViewById(R.id.btnStart);
+			btnStop = (Button) findViewById(R.id.btnStop);
+			btnStart.setOnClickListener(this);
+			btnStop.setOnClickListener(this);
+			btnStart.setEnabled(true);
+			btnStop.setEnabled(false);
 
-			List<Double> latList = new ArrayList<Double>();
-			latList.add(45.7309593);
-			latList.add(46.34);
-			latList.add(47.34);
+			int status = GooglePlayServicesUtil
+					.isGooglePlayServicesAvailable(getBaseContext());
+			if (status != ConnectionResult.SUCCESS) { // Google Play Services
+														// are
+														// not available
 
-			List<Double> lonList = new ArrayList<Double>();
-			lonList.add(-122.6365384);
-			lonList.add(-123.6365384);
-			lonList.add(-124.6365384);
+				int requestCode = 10;
+				Dialog dialog = GooglePlayServicesUtil.getErrorDialog(status,
+						this, requestCode);
+				dialog.show();
 
-			for (int i = 0; i < 3; i++) {
-			//	LatLng latLng = new LatLng(45.7309593, -122.6365384);
-				LatLng latLng = new LatLng(latList.get(i).doubleValue(), lonList.get(i).doubleValue());
-				googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-				googleMap
-						.addMarker(new MarkerOptions()
-								.position(latLng)
-								.title("My Spot")
-								.snippet("This is my spot!")
-								.icon(BitmapDescriptorFactory
-										.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-			}
-			googleMap.setOnMapClickListener(new OnMapClickListener() {
+			} else { // Google Play Services are available
 
-				@Override
-				public void onMapClick(LatLng latLng) {
+				// Getting reference to the SupportMapFragment of
+				// activity_main.xml
+				// SupportMapFragment supportMapFragment = (MapFragment)
+				// getFragmentManager().findFragmentById(R.id.map);
 
-					// Creating a marker
-					MarkerOptions markerOptions = new MarkerOptions();
+				// Getting GoogleMap object from the fragment
+				googleMap = ((MapFragment) getFragmentManager()
+						.findFragmentById(R.id.map)).getMap();
+				// googleMap = supportMapFragment.getMap();
 
-					// Setting the position for the marker
-					markerOptions.position(latLng);
+				// can use for overlay on the map
+				List<Double> latList = new ArrayList<Double>();
+				latList.add(45.7309593);
+				latList.add(46.34);
+				latList.add(47.34);
 
-					// Setting the title for the marker.
-					// This will be displayed on taping the marker
-					markerOptions.title(latLng.latitude + " : "
-							+ latLng.longitude);
+				List<Double> lonList = new ArrayList<Double>();
+				lonList.add(-122.6365384);
+				lonList.add(-123.6365384);
+				lonList.add(-124.6365384);
 
-					// Clears the previously touched position
-					googleMap.clear();
-
-					// Animating to the touched position
-					googleMap.animateCamera(CameraUpdateFactory
-							.newLatLng(latLng));
-
-					// Placing a marker on the touched position
-					googleMap.addMarker(markerOptions);
+				for (int i = 0; i < 3; i++) {
+					// LatLng latLng = new LatLng(45.7309593, -122.6365384);
+					LatLng latLng = new LatLng(latList.get(i).doubleValue(),
+							lonList.get(i).doubleValue());
+					googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+					googleMap
+							.addMarker(new MarkerOptions()
+									.position(latLng)
+									.title("My Spot")
+									.snippet("This is my spot!")
+									.icon(BitmapDescriptorFactory
+											.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
 				}
-			});
+				googleMap.setOnMapClickListener(new OnMapClickListener() {
 
-			// Enabling MyLocation Layer of Google Map
-			googleMap.setMyLocationEnabled(true);
+					@Override
+					public void onMapClick(LatLng latLng) {
 
-			LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+						// Creating a marker
+						MarkerOptions markerOptions = new MarkerOptions();
 
-			Criteria criteria = new Criteria();
-			provider = locationManager.getBestProvider(criteria, true);
-			Location location = locationManager.getLastKnownLocation(provider);
+						// Setting the position for the marker
+						markerOptions.position(latLng);
 
-			if (location != null) {
-				onLocationChanged(location);
+						// Setting the title for the marker.
+						// This will be displayed on taping the marker
+						markerOptions.title(latLng.latitude + " : "
+								+ latLng.longitude);
+
+						// Clears the previously touched position
+						googleMap.clear();
+
+						// Animating to the touched position
+						googleMap.animateCamera(CameraUpdateFactory
+								.newLatLng(latLng));
+
+						// Placing a marker on the touched position
+						googleMap.addMarker(markerOptions);
+					}
+				});
+
+				// Enabling MyLocation Layer of Google Map
+				googleMap.setMyLocationEnabled(true);
+
+				LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+
+				Criteria criteria = new Criteria();
+				provider = locationManager.getBestProvider(criteria, true);
+				Location location = locationManager
+						.getLastKnownLocation(provider);
+
+				if (location != null) {
+					onLocationChanged(location);
+				}
+
+				locationManager
+						.requestLocationUpdates(provider, 20000, 0, this);
 			}
-
-			locationManager.requestLocationUpdates(provider, 20000, 0, this);
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 
 	}
@@ -181,18 +210,21 @@ public class MapViewActivity extends Activity implements LocationListener,
 			AccelLocData data = new AccelLocData(timestamp, x, y, z, latitude,
 					longitude);
 
-			 /*System.out.println("Accel Data:" + data.toString());
-			 System.out.println("Latitude:" + latitude);
-			 System.out.println("Longitude:" + longitude);*/
+			System.out.println("data x:" + data.getX());
 
-			sensorData.add(data);
+			try {
+				writer.write(data.toString());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
 		}
 	}
 
 	@Override
 	public void onLocationChanged(Location location) {
-/*
+
 		TextView tvLocation = (TextView) findViewById(R.id.tv_location);
 
 		// Getting latitude of the current location
@@ -209,63 +241,75 @@ public class MapViewActivity extends Activity implements LocationListener,
 
 		// Zoom in the Google Map
 		googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
-		System.out.println("Latitude:" + latitude + ", Longitude:" + longitude);
+		// System.out.println("Latitude:" + latitude + ", Longitude:" +
+		// longitude);
 
 		// Setting latitude and longitude in the TextView tv_location
 		// tvLocation.setText("Latitude:" + latitude + ", Longitude:" +
 		// longitude);
-		 
-		 */
-	}
 
+	}
 
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
 		case R.id.btnStart:
+
 			btnStart.setEnabled(false);
 			btnStop.setEnabled(true);
-			// btnUpload.setEnabled(false);
-		//	sensorData = new ArrayList<AccelLocData>();
-			// save prev data if available
+			System.out.println("cam on click of start");
 			started = true;
-			try {
-				File root = android.os.Environment
-						.getExternalStorageDirectory();
-				File dir = new File(root.getAbsolutePath() + "/roadmonitor");
-				dir.mkdirs();
-				File sensorFile = new File(dir, "acc.txt");
 
-				 sensorFile.createNewFile();
-				FileOutputStream fOut = new FileOutputStream(sensorFile);
-				ObjectOutputStream myOutWriter = new ObjectOutputStream(fOut);
-				System.out.println("Sensor data size:"+sensorData.size());
-				
-				
-				
-				myOutWriter.writeObject(sensorData);
-				myOutWriter.close();
-				fOut.close();
-			} catch (Exception e) {
-
-			}
-			Sensor accel = sensorManager
-					.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-			sensorManager.registerListener(this, accel,
+			sensorManager.registerListener(this, mAccelerometer,
 					SensorManager.SENSOR_DELAY_FASTEST);
 			break;
 		case R.id.btnStop:
-			btnStart.setEnabled(true);
-			btnStop.setEnabled(false);
-			// btnUpload.setEnabled(true);
-			started = false;
-			sensorManager.unregisterListener(this);
+			try {
+				btnStart.setEnabled(true);
+				btnStop.setEnabled(false);
+				// btnUpload.setEnabled(true);
+				started = false;
+
+				sensorManager.unregisterListener(this);
+
+				/*
+				 * if(writer != null) { try { writer.close(); } catch
+				 * (IOException e) { // TODO Auto-generated catch block
+				 * e.printStackTrace(); } }
+				 */} catch (Exception e) {
+				e.printStackTrace();
+			}
 			break;
 		default:
 			break;
 		}
 
 	}
+
+	protected void onPause() {
+		super.onPause();
+
+		if (writer != null) {
+			try {
+				writer.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+	protected void onResume() {
+		super.onResume();
+		try {
+			System.out.println("called onresume");
+			writer = new FileWriter(sensorFile, true);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
 	@Override
 	public void onProviderDisabled(String arg0) {
 		// TODO Auto-generated method stub
