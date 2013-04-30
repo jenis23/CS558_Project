@@ -1,16 +1,18 @@
 package wsu.cs558.roadmonitoring.bean;
 
 public class AccelLocData {
-	private long timestamp;
+	private int id;
+	private long timeStamp;
 	private double x;
 	private double y;
 	private double z;
 	private double latitude;
 	private double longitude;
 
-	public AccelLocData(long timestamp, double x, double y, double z,
+	public AccelLocData(int id, long timeStamp, double x, double y, double z,
 			double latitude, double longitude) {
-		this.timestamp = timestamp;
+		this.id = id;
+		this.timeStamp = timeStamp;
 		this.x = x;
 		this.y = y;
 		this.z = z;
@@ -18,8 +20,25 @@ public class AccelLocData {
 		this.longitude = longitude;
 	}
 
+	public AccelLocData(long timeStamp, double x, double y, double z,
+			double latitude, double longitude) {
+		this.timeStamp = timeStamp;
+		this.x = x;
+		this.y = y;
+		this.z = z;
+		this.latitude = latitude;
+		this.longitude = longitude;
+	}
 	public double getLatitude() {
 		return latitude;
+	}
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
 	}
 
 	public void setLatitude(double latitude) {
@@ -34,12 +53,14 @@ public class AccelLocData {
 		this.longitude = longitude;
 	}
 
-	public long getTimestamp() {
-		return timestamp;
+	
+
+	public long getTimeStamp() {
+		return timeStamp;
 	}
 
-	public void setTimestamp(long timestamp) {
-		this.timestamp = timestamp;
+	public void setTimeStamp(long timeStamp) {
+		this.timeStamp = timeStamp;
 	}
 
 	public double getX() {
@@ -68,9 +89,9 @@ public class AccelLocData {
 
 	@Override
 	public String toString() {
-		return "AccelData [timestamp=" + timestamp + ", x=" + x + ", y=" + y
+		return "AccelData [timestamp=" + timeStamp + ", x=" + x + ", y=" + y
 				+ ", z=" + z + ", latitude=" + latitude + ", longitude="
-				+ longitude + "]";
+				+ longitude + "]" +"\n";
 	}
 
 }

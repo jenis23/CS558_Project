@@ -4,7 +4,15 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
+
 import wsu.cs558.roadmonitoring.bean.AccelLocData;
+import wsu.cs558.roadmonitoring.helper.DatabaseHelper;
 
 import com.google.android.gms.maps.*;
 import com.google.android.gms.maps.GoogleMap.OnMapClickListener;
@@ -23,6 +31,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -48,11 +57,12 @@ public class MapViewActivity extends Activity implements LocationListener,
 	private Button btnStart, btnStop;
 	private String provider;
 
-	File root, dir, sensorFile;
+	// File root, dir, sensorFile;
 	FileOutputStream fOut;
 	// ObjectOutputStream myOutWriter;
 	private Sensor mAccelerometer;
 	private FileWriter writer;
+	private DatabaseHelper databaseHelper;
 
 	// private Button btnUpload;
 
@@ -63,20 +73,26 @@ public class MapViewActivity extends Activity implements LocationListener,
 		setContentView(R.layout.activity_main);
 
 		try {
-			root = android.os.Environment.getExternalStorageDirectory();
-			dir = new File(root.getAbsolutePath() + "/roadmonitor");
-			dir.mkdirs();
 
-			File oldFile = new File(dir, "data.txt");
+			databaseHelper = new DatabaseHelper(this);
+			databaseHelper.removeAll();
 
-			boolean deleted = oldFile.delete();
-			System.out.println("Delete status = " + deleted);
-			sensorFile = new File(dir, "data.txt");
+			// root = android.os.Environment.getExternalStorageDirectory();
+			// dir = new File(root.getAbsolutePath() + "/roadmonitor");
+			// dir.mkdirs();
+
+			// File oldFile = new File(dir, "data.txt");
+
+			// boolean deleted = oldFile.delete();
+			// System.out.println("Delete status = " + deleted);
+			// sensorFile = new File(dir, "data.txt");
+
+			Log.v("datacount",
+					Integer.toString(databaseHelper.getLocDataCount()));
 
 			sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 			mAccelerometer = sensorManager
 					.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-
 
 			btnStart = (Button) findViewById(R.id.btnStart);
 			btnStop = (Button) findViewById(R.id.btnStop);
@@ -207,14 +223,16 @@ public class MapViewActivity extends Activity implements LocationListener,
 				latitude = location.getLatitude();
 				longitude = location.getLongitude();
 			}
-			AccelLocData data = new AccelLocData(timestamp, x, y, z, latitude,
-					longitude);
+			AccelLocData accelLocData = new AccelLocData(timestamp, x, y, z,
+					latitude, longitude);
 
-			System.out.println("data x:" + data.getX());
+			// Log.d("X data","data x:" + data.getX());
 
 			try {
-				writer.write(data.toString());
-			} catch (IOException e) {
+				// writer.write(data.toString());
+				if (databaseHelper != null)
+					databaseHelper.insertLocData(accelLocData);
+			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -257,8 +275,11 @@ public class MapViewActivity extends Activity implements LocationListener,
 
 			btnStart.setEnabled(false);
 			btnStop.setEnabled(true);
-			System.out.println("cam on click of start");
+			Log.d("startbutton", "cam on click of start");
 			started = true;
+
+			// delete all files..
+			// start thread to send data
 
 			sensorManager.registerListener(this, mAccelerometer,
 					SensorManager.SENSOR_DELAY_FASTEST);
@@ -271,6 +292,47 @@ public class MapViewActivity extends Activity implements LocationListener,
 				started = false;
 
 				sensorManager.unregisterListener(this);
+
+				List<AccelLocData> accelLocDataList = databaseHelper
+						.getAllData();
+				
+				int locDataCount = databaseHelper.getLocDataCount();
+				
+				HttpClient httpClient = new DefaultHttpClient();
+				HttpPost httpPost = new HttpPost(
+						"http://netlab.encs.vancouver.wsu.edu/web/html/accelLocData.php");
+				
+				
+
+				List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+				Log.d("datacount",Integer.toString(locDataCount));
+				nameValuePairs.add(new BasicNameValuePair("datacount",Integer.toString(locDataCount)));
+				for (int i = 0; i < accelLocDataList.size(); i++) {
+					
+					nameValuePairs.add(new BasicNameValuePair("latitude"+i,
+							Double.toString(accelLocDataList.get(i)
+									.getLatitude())));
+					nameValuePairs.add(new BasicNameValuePair("longitude"+i,
+							Double.toString(accelLocDataList.get(i)
+									.getLongitude())));
+					nameValuePairs.add(new BasicNameValuePair("accelX"+i, Double
+							.toString(accelLocDataList.get(i).getX())));
+					nameValuePairs.add(new BasicNameValuePair("accelY"+i, Double
+							.toString(accelLocDataList.get(i).getY())));
+					nameValuePairs.add(new BasicNameValuePair("accelZ"+i, Double
+							.toString(accelLocDataList.get(i).getZ())));
+					nameValuePairs.add(new BasicNameValuePair("timeStamp"+i, Double
+							.toString(accelLocDataList.get(i).getTimeStamp())));
+				
+
+				}
+
+				httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+				httpClient.execute(httpPost);
+				for(int i=0;i<accelLocDataList.size();i++){
+					Log.d("Latitude",Double.toString(accelLocDataList.get(i)
+									.getLatitude()));
+				}
 
 				/*
 				 * if(writer != null) { try { writer.close(); } catch
@@ -289,25 +351,19 @@ public class MapViewActivity extends Activity implements LocationListener,
 	protected void onPause() {
 		super.onPause();
 
-		if (writer != null) {
-			try {
-				writer.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+		/*
+		 * if (writer != null) { try { writer.close(); } catch (IOException e) {
+		 * // TODO Auto-generated catch block e.printStackTrace(); } }
+		 */
 	}
 
 	protected void onResume() {
 		super.onResume();
-		try {
-			System.out.println("called onresume");
-			writer = new FileWriter(sensorFile, true);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		/*
+		 * try { Log.d("onresume","called onresume"); writer = new
+		 * FileWriter(sensorFile, true); } catch (IOException e) { // TODO
+		 * Auto-generated catch block e.printStackTrace(); }
+		 */
 	}
 
 	@Override
