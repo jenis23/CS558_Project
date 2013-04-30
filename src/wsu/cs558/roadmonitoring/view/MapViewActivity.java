@@ -2,12 +2,14 @@ package wsu.cs558.roadmonitoring.view;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 
@@ -19,8 +21,12 @@ import com.google.android.gms.maps.GoogleMap.OnMapClickListener;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.Dialog;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
 
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -45,6 +51,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.gson.Gson;
 
 public class MapViewActivity extends Activity implements LocationListener,
 		SensorEventListener, OnClickListener {
@@ -59,10 +66,14 @@ public class MapViewActivity extends Activity implements LocationListener,
 
 	// File root, dir, sensorFile;
 	FileOutputStream fOut;
-	// ObjectOutputStream myOutWriter;
 	private Sensor mAccelerometer;
 	private FileWriter writer;
 	private DatabaseHelper databaseHelper;
+	private BroadcastReceiver alarmReceiver;
+	private PendingIntent pendingIntentSender, pendingIntentReceiver;
+
+	private AlarmManager alarmManager;
+	private Intent alarmIntent;
 
 	// private Button btnUpload;
 
@@ -100,6 +111,8 @@ public class MapViewActivity extends Activity implements LocationListener,
 			btnStop.setOnClickListener(this);
 			btnStart.setEnabled(true);
 			btnStop.setEnabled(false);
+
+			alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
 
 			int status = GooglePlayServicesUtil
 					.isGooglePlayServicesAvailable(getBaseContext());
@@ -230,8 +243,8 @@ public class MapViewActivity extends Activity implements LocationListener,
 
 			try {
 				// writer.write(data.toString());
-				if (databaseHelper != null)
-					databaseHelper.insertLocData(accelLocData);
+				 if (databaseHelper != null)
+				 databaseHelper.insertLocData(accelLocData);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -273,6 +286,23 @@ public class MapViewActivity extends Activity implements LocationListener,
 		switch (v.getId()) {
 		case R.id.btnStart:
 
+			Context context = getApplicationContext();
+			Intent alarmIntent = new Intent(context, AccelLocSender.class);
+
+			AlarmManager alarmManager = (AlarmManager) context
+					.getSystemService(Context.ALARM_SERVICE);
+			pendingIntentSender = PendingIntent.getBroadcast(context, 0,
+					alarmIntent, 0);
+
+			alarmManager.setRepeating(AlarmManager.RTC_WAKEUP,
+					System.currentTimeMillis(), 180000, pendingIntentSender);
+
+			alarmIntent = new Intent(context, AccelLocReceiver.class);
+			pendingIntentReceiver = PendingIntent.getBroadcast(context, 0,
+					alarmIntent, 0);
+			alarmManager.setRepeating(AlarmManager.RTC_WAKEUP,
+					System.currentTimeMillis(), 3000, pendingIntentReceiver);
+
 			btnStart.setEnabled(false);
 			btnStop.setEnabled(true);
 			Log.d("startbutton", "cam on click of start");
@@ -293,52 +323,80 @@ public class MapViewActivity extends Activity implements LocationListener,
 
 				sensorManager.unregisterListener(this);
 
+				Context context1 = getApplicationContext();
+				AlarmManager alarmManager1 = (AlarmManager) context1
+						.getSystemService(Context.ALARM_SERVICE);
+				alarmManager1.cancel(pendingIntentSender);
+				alarmManager1.cancel(pendingIntentReceiver);
+
 				List<AccelLocData> accelLocDataList = databaseHelper
 						.getAllData();
 				
-				int locDataCount = databaseHelper.getLocDataCount();
 				
+				
+				/*HttpClient httpClient = new DefaultHttpClient();
+				HttpPost httpPost = new HttpPost(
+						"http://netlab.encs.vancouver.wsu.edu/web/html/accelLocData2.php");
+				Gson gson = new Gson();
+				Log.i("json data:",gson.toJson(accelLocDataList));
+				
+				
+				String jsonString = gson.toJson(accelLocDataList);
+				StringEntity stringEntity = new StringEntity(jsonString);
+		
+				httpPost.setEntity(stringEntity);
+				
+				
+				httpPost.setHeader("Accept", "application/json");
+				httpPost.setHeader("Content-type", "application/json");
+				httpPost.setHeader("jsondata",jsonString);
+				
+				
+				httpClient.execute(httpPost);*/
+				
+				/*
+				int locDataCount = databaseHelper.getLocDataCount();
+
 				HttpClient httpClient = new DefaultHttpClient();
 				HttpPost httpPost = new HttpPost(
 						"http://netlab.encs.vancouver.wsu.edu/web/html/accelLocData.php");
-				
-				
 
 				List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-				Log.d("datacount",Integer.toString(locDataCount));
-				nameValuePairs.add(new BasicNameValuePair("datacount",Integer.toString(locDataCount)));
+				Log.d("datacount", Integer.toString(locDataCount));
+				nameValuePairs.add(new BasicNameValuePair("datacount", Integer
+						.toString(locDataCount)));
 				for (int i = 0; i < accelLocDataList.size(); i++) {
-					
-					nameValuePairs.add(new BasicNameValuePair("latitude"+i,
+
+					nameValuePairs.add(new BasicNameValuePair("latitude" + i,
 							Double.toString(accelLocDataList.get(i)
 									.getLatitude())));
-					nameValuePairs.add(new BasicNameValuePair("longitude"+i,
+					nameValuePairs.add(new BasicNameValuePair("longitude" + i,
 							Double.toString(accelLocDataList.get(i)
 									.getLongitude())));
-					nameValuePairs.add(new BasicNameValuePair("accelX"+i, Double
-							.toString(accelLocDataList.get(i).getX())));
-					nameValuePairs.add(new BasicNameValuePair("accelY"+i, Double
-							.toString(accelLocDataList.get(i).getY())));
-					nameValuePairs.add(new BasicNameValuePair("accelZ"+i, Double
-							.toString(accelLocDataList.get(i).getZ())));
-					nameValuePairs.add(new BasicNameValuePair("timeStamp"+i, Double
-							.toString(accelLocDataList.get(i).getTimeStamp())));
+					nameValuePairs.add(new BasicNameValuePair("accelX" + i,
+							Double.toString(accelLocDataList.get(i).getX())));
+					nameValuePairs.add(new BasicNameValuePair("accelY" + i,
+							Double.toString(accelLocDataList.get(i).getY())));
+					nameValuePairs.add(new BasicNameValuePair("accelZ" + i,
+							Double.toString(accelLocDataList.get(i).getZ())));
+					nameValuePairs.add(new BasicNameValuePair("timeStamp" + i,
+							Double.toString(accelLocDataList.get(i)
+									.getTimeStamp())));
+
+				}
 				
 
-				}
-
+				
 				httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-				httpClient.execute(httpPost);
-				for(int i=0;i<accelLocDataList.size();i++){
-					Log.d("Latitude",Double.toString(accelLocDataList.get(i)
-									.getLatitude()));
-				}
+				httpClient.execute(httpPost);*/
+
 
 				/*
 				 * if(writer != null) { try { writer.close(); } catch
 				 * (IOException e) { // TODO Auto-generated catch block
 				 * e.printStackTrace(); } }
-				 */} catch (Exception e) {
+				 */
+				} catch (Exception e) {
 				e.printStackTrace();
 			}
 			break;

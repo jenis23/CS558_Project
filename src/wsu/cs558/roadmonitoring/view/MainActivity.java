@@ -1,5 +1,6 @@
 package wsu.cs558.roadmonitoring.view;
 
+
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.app.Activity;

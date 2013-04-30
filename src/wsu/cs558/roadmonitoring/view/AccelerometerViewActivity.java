@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 
+
 import wsu.cs558.roadmonitoring.bean.AccelLocData;
 
 import android.app.Activity;
