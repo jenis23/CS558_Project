@@ -14,6 +14,9 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+
 import wsu.cs558.roadmonitoring.bean.RoadSeverity;
 
 import android.content.BroadcastReceiver;
@@ -30,6 +33,7 @@ public class AccelLocReceiver extends BroadcastReceiver {
 	private static final String ROAD_ID = "road_id";
 	private static final String ROAD_SEVERITY = "severity_value";
 	List<RoadSeverity> roadSevList;
+	GoogleMap googleMap;
 
 	@Override
 	public void onReceive(Context arg0, Intent arg1) {
@@ -79,6 +83,8 @@ public class AccelLocReceiver extends BroadcastReceiver {
 
 			// set overlays from above details ***** TBD *************
 
+			
+			//googleMap = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

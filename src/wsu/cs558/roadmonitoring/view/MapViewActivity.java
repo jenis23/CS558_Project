@@ -27,6 +27,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
 
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -50,6 +51,7 @@ import com.google.android.gms.maps.GoogleMap;
 
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.gson.Gson;
 
@@ -64,6 +66,7 @@ public class MapViewActivity extends Activity implements LocationListener,
 	private Button btnStart, btnStop;
 	private String provider;
 
+	Marker now;
 	// File root, dir, sensorFile;
 	FileOutputStream fOut;
 	private Sensor mAccelerometer;
@@ -73,8 +76,8 @@ public class MapViewActivity extends Activity implements LocationListener,
 	private PendingIntent pendingIntentSender, pendingIntentReceiver;
 
 	private AlarmManager alarmManager;
-	private Intent alarmIntent;
-
+	private Intent alarmIntent,alarmIntent2;
+	private SQLiteDatabase db1;
 	// private Button btnUpload;
 
 	@SuppressLint("NewApi")
@@ -84,20 +87,14 @@ public class MapViewActivity extends Activity implements LocationListener,
 		setContentView(R.layout.activity_main);
 
 		try {
-
+			db1 = openOrCreateDatabase("roadmonitor.db",
+							SQLiteDatabase.CREATE_IF_NECESSARY, null);
+			db1.execSQL("DROP TABLE IF EXISTS AccelLocation");
+			db1.close();
 			databaseHelper = new DatabaseHelper(this);
 			databaseHelper.removeAll();
-
-			// root = android.os.Environment.getExternalStorageDirectory();
-			// dir = new File(root.getAbsolutePath() + "/roadmonitor");
-			// dir.mkdirs();
-
-			// File oldFile = new File(dir, "data.txt");
-
-			// boolean deleted = oldFile.delete();
-			// System.out.println("Delete status = " + deleted);
-			// sensorFile = new File(dir, "data.txt");
-
+			
+			
 			Log.v("datacount",
 					Integer.toString(databaseHelper.getLocDataCount()));
 
@@ -133,12 +130,11 @@ public class MapViewActivity extends Activity implements LocationListener,
 				// getFragmentManager().findFragmentById(R.id.map);
 
 				// Getting GoogleMap object from the fragment
-				googleMap = ((MapFragment) getFragmentManager()
-						.findFragmentById(R.id.map)).getMap();
-				// googleMap = supportMapFragment.getMap();
+				googleMap = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
+				 
 
 				// can use for overlay on the map
-				List<Double> latList = new ArrayList<Double>();
+				/*List<Double> latList = new ArrayList<Double>();
 				latList.add(45.7309593);
 				latList.add(46.34);
 				latList.add(47.34);
@@ -160,8 +156,8 @@ public class MapViewActivity extends Activity implements LocationListener,
 									.snippet("This is my spot!")
 									.icon(BitmapDescriptorFactory
 											.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-				}
-				googleMap.setOnMapClickListener(new OnMapClickListener() {
+				}*/
+			/*	googleMap.setOnMapClickListener(new OnMapClickListener() {
 
 					@Override
 					public void onMapClick(LatLng latLng) {
@@ -188,7 +184,7 @@ public class MapViewActivity extends Activity implements LocationListener,
 						googleMap.addMarker(markerOptions);
 					}
 				});
-
+*/
 				// Enabling MyLocation Layer of Google Map
 				googleMap.setMyLocationEnabled(true);
 
@@ -204,7 +200,7 @@ public class MapViewActivity extends Activity implements LocationListener,
 				}
 
 				locationManager
-						.requestLocationUpdates(provider, 20000, 0, this);
+						.requestLocationUpdates(provider, 60000, 0, this);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -242,7 +238,7 @@ public class MapViewActivity extends Activity implements LocationListener,
 			// Log.d("X data","data x:" + data.getX());
 
 			try {
-				// writer.write(data.toString());
+				// writer.write(accelLocData.toString());
 				 if (databaseHelper != null)
 				 databaseHelper.insertLocData(accelLocData);
 			} catch (Exception e) {
@@ -256,7 +252,13 @@ public class MapViewActivity extends Activity implements LocationListener,
 	@Override
 	public void onLocationChanged(Location location) {
 
-		TextView tvLocation = (TextView) findViewById(R.id.tv_location);
+//		TextView tvLocation = (TextView) findViewById(R.id.tv_location);
+		
+		/*if(now != null){
+            now.remove();
+
+        }*/
+
 
 		// Getting latitude of the current location
 		double latitude = location.getLatitude();
@@ -267,17 +269,19 @@ public class MapViewActivity extends Activity implements LocationListener,
 		// Creating a LatLng object for the current location
 		LatLng latLng = new LatLng(latitude, longitude);
 
+		
+	//	now = googleMap.addMarker(new MarkerOptions().position(latLng));
+		
+		
 		// Showing the current location in Google Map
 		googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
 
 		// Zoom in the Google Map
-		googleMap.animateCamera(CameraUpdateFactory.zoomTo(15));
-		// System.out.println("Latitude:" + latitude + ", Longitude:" +
-		// longitude);
+		googleMap.animateCamera(CameraUpdateFactory.zoomTo(18));
+		
+		// TBD : Try to add Overlay here
+		
 
-		// Setting latitude and longitude in the TextView tv_location
-		// tvLocation.setText("Latitude:" + latitude + ", Longitude:" +
-		// longitude);
 
 	}
 
@@ -287,32 +291,32 @@ public class MapViewActivity extends Activity implements LocationListener,
 		case R.id.btnStart:
 
 			Context context = getApplicationContext();
-			Intent alarmIntent = new Intent(context, AccelLocSender.class);
-
+			
+			alarmIntent = new Intent(context, AccelLocSender.class);
 			AlarmManager alarmManager = (AlarmManager) context
 					.getSystemService(Context.ALARM_SERVICE);
 			pendingIntentSender = PendingIntent.getBroadcast(context, 0,
-					alarmIntent, 0);
+					alarmIntent, 0); 
 
 			alarmManager.setRepeating(AlarmManager.RTC_WAKEUP,
-					System.currentTimeMillis(), 60000, pendingIntentSender);
+					System.currentTimeMillis(), 30000, pendingIntentSender); 
 
-			alarmIntent = new Intent(context, AccelLocReceiver.class);
+			alarmIntent2 = new Intent(context, AccelLocReceiver.class);
 			pendingIntentReceiver = PendingIntent.getBroadcast(context, 0,
-					alarmIntent, 0);
+					alarmIntent2, 0);
 			alarmManager.setRepeating(AlarmManager.RTC_WAKEUP,
 					System.currentTimeMillis(), 30000, pendingIntentReceiver);
 
 			btnStart.setEnabled(false);
 			btnStop.setEnabled(true);
-			Log.d("startbutton", "cam on click of start");
+			Log.d("startbutton", "came on click of start");
 			started = true;
 
 			// delete all files..
 			// start thread to send data
 
-			sensorManager.registerListener(this, mAccelerometer,
-					SensorManager.SENSOR_DELAY_FASTEST);
+			//sensorManager.registerListener(this, mAccelerometer,SensorManager.SENSOR_DELAY_FASTEST);
+			sensorManager.registerListener(this, mAccelerometer,SensorManager.SENSOR_DELAY_UI);
 			break;
 		case R.id.btnStop:
 			try {

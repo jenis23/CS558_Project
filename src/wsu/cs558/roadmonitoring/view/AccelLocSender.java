@@ -21,6 +21,7 @@ import android.util.Log;
 public class AccelLocSender extends BroadcastReceiver {
 
 	private DatabaseHelper databaseHelper;
+	private static int indexValue=1;
 
 	@Override
 	public void onReceive(Context context, Intent arg1) {
@@ -38,9 +39,16 @@ public class AccelLocSender extends BroadcastReceiver {
 	private void sendDataToServer() {
 
 		try {
+		
+			
 			int locDataCount = databaseHelper.getLocDataCount();
-			List<AccelLocData> accelLocDataList = databaseHelper.getAllData();
-
+			
+			List<AccelLocData> accelLocDataList = databaseHelper.getAllDataById(indexValue);
+			Thread.sleep(3000);
+			databaseHelper.deleteLocDataById(indexValue);
+			Thread.sleep(3000);
+			indexValue += 50;
+			
 			HttpClient httpClient = new DefaultHttpClient();
 			HttpPost httpPost = new HttpPost(
 					"http://netlab.encs.vancouver.wsu.edu/web/html/accelLocData.php");
