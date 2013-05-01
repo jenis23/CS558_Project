@@ -16,7 +16,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
 	private static final String DB_NAME = "roadmonitor.db";
 	static String TABLE_NAME = "AccelLocation";
-	private String[] columns;
+	
 	private static final String KEY_ID = "id";
 	private static final String LATITUDE_VAL = "latitude";
 	private static final String LONGITUDE_VAL = "longitude";
@@ -38,14 +38,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 				+ LATITUDE_VAL + " TEXT," + LONGITUDE_VAL + " TEXT," + ACCEL_X
 				+ " TEXT," + ACCEL_Y + " TEXT," + ACCEL_Z + " TEXT," + CUR_TIME
 				+ " TEXT" + ")";
-		Log.d("createquery",CREATE_TABLE_SQL);
-		System.out.println("Create query :"+CREATE_TABLE_SQL);
-//		db.execSQL("DROP TABLE IF EXISTS"+TABLE_NAME);
-		
+		Log.d("createquery", CREATE_TABLE_SQL);
+		System.out.println("Create query :" + CREATE_TABLE_SQL);
+		// db.execSQL("DROP TABLE IF EXISTS"+TABLE_NAME);
+
 		db.execSQL(CREATE_TABLE_SQL);
+	//	db.close();
 	}
 
 	public void insertLocData(AccelLocData accelLocData) {
+		
+		
 		SQLiteDatabase db = this.getWritableDatabase();
 
 		ContentValues values = new ContentValues();
@@ -55,8 +58,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 		values.put(ACCEL_Y, accelLocData.getY());
 		values.put(ACCEL_Z, accelLocData.getZ());
 		values.put(CUR_TIME, accelLocData.getTimeStamp());
-		
-		
 
 		// Inserting Row
 		db.insert(TABLE_NAME, null, values);
@@ -66,26 +67,39 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
 	public List<AccelLocData> getAllData() {
 
+		Cursor cursor = null;
+
 		List<AccelLocData> accelLocDataList = new ArrayList<AccelLocData>();
+		SQLiteDatabase db = null;
 		// Select All Query
-		String selectQuery = "SELECT  * FROM " + TABLE_NAME;
+		try {
+			String selectQuery = "SELECT  * FROM " + TABLE_NAME;
 
-		SQLiteDatabase db = this.getWritableDatabase();
-		Cursor cursor = db.rawQuery(selectQuery, null);
+			db = this.getWritableDatabase();
+			cursor = db.rawQuery(selectQuery, null);
 
-		// looping through all rows and adding to list
-		if (cursor.moveToFirst()) {
-			do {
-				AccelLocData accelLocData = new AccelLocData(
-						Integer.parseInt(cursor.getString(0)),
-						Long.parseLong(cursor.getString(6)),
-						Double.parseDouble(cursor.getString(3)),
-						Double.parseDouble(cursor.getString(4)),
-						Double.parseDouble(cursor.getString(5)),
-						Double.parseDouble(cursor.getString(1)),
-						Double.parseDouble(cursor.getString(2)));
-				accelLocDataList.add(accelLocData);
-			} while (cursor.moveToNext());
+			// looping through all rows and adding to list
+			if (cursor.moveToFirst()) {
+				do {
+					AccelLocData accelLocData = new AccelLocData(
+							Integer.parseInt(cursor.getString(0)),
+							Long.parseLong(cursor.getString(6)),
+							Double.parseDouble(cursor.getString(3)),
+							Double.parseDouble(cursor.getString(4)),
+							Double.parseDouble(cursor.getString(5)),
+							Double.parseDouble(cursor.getString(1)),
+							Double.parseDouble(cursor.getString(2)));
+					accelLocDataList.add(accelLocData);
+				} while (cursor.moveToNext());
+			}
+
+		} catch (Exception e) {
+			Log.e("DatabasegetallData", e.toString());
+		} finally {
+			cursor.close();
+			db.close();
+			
+
 		}
 
 		// return accelLocData list
@@ -106,7 +120,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 		String countQuery = "SELECT  * FROM " + TABLE_NAME;
 		SQLiteDatabase db = this.getReadableDatabase();
 		Cursor cursor = db.rawQuery(countQuery, null);
-		return cursor.getCount();
+		int noOfRows = cursor.getCount();
+		cursor.close();
+		db.close();
+		return noOfRows;
 	}
 
 	@Override
@@ -114,13 +131,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 		// TODO Auto-generated method stub
 
 	}
-	
-	public void removeAll()
-	{
-	    
-	    SQLiteDatabase db = this.getWritableDatabase(); // helper is object extends SQLiteOpenHelper
-	    db.delete(DatabaseHelper.TABLE_NAME, null, null);
-	
+
+	public void removeAll() {
+
+		
+		SQLiteDatabase db = this.getWritableDatabase(); // helper is object
+														// extends
+														// SQLiteOpenHelper
+		db.delete(DatabaseHelper.TABLE_NAME, null, null);
+		db.close();
+
 	}
 
 }

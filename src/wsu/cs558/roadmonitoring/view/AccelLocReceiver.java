@@ -69,6 +69,13 @@ public class AccelLocReceiver extends BroadcastReceiver {
 				roadSevList.add(roadSeverity);
 
 			}
+			
+			for(int i=0;i<roadSevList.size();i++){
+				Log.i("road_id",Integer.toString(roadSevList.get(i).getRoadId()));
+				Log.i("road_latitude",Double.toString(roadSevList.get(i).getRoadLatitude()));
+				Log.i("road_longitude",Double.toString(roadSevList.get(i).getRoadLongitude()));
+				Log.i("road_severity",Double.toString(roadSevList.get(i).getRoadSeverity()));
+			}
 
 			// set overlays from above details ***** TBD *************
 

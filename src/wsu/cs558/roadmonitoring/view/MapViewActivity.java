@@ -295,13 +295,13 @@ public class MapViewActivity extends Activity implements LocationListener,
 					alarmIntent, 0);
 
 			alarmManager.setRepeating(AlarmManager.RTC_WAKEUP,
-					System.currentTimeMillis(), 180000, pendingIntentSender);
+					System.currentTimeMillis(), 60000, pendingIntentSender);
 
 			alarmIntent = new Intent(context, AccelLocReceiver.class);
 			pendingIntentReceiver = PendingIntent.getBroadcast(context, 0,
 					alarmIntent, 0);
 			alarmManager.setRepeating(AlarmManager.RTC_WAKEUP,
-					System.currentTimeMillis(), 3000, pendingIntentReceiver);
+					System.currentTimeMillis(), 30000, pendingIntentReceiver);
 
 			btnStart.setEnabled(false);
 			btnStop.setEnabled(true);
@@ -329,8 +329,8 @@ public class MapViewActivity extends Activity implements LocationListener,
 				alarmManager1.cancel(pendingIntentSender);
 				alarmManager1.cancel(pendingIntentReceiver);
 
-				List<AccelLocData> accelLocDataList = databaseHelper
-						.getAllData();
+			//	System.exit(0);
+				//List<AccelLocData> accelLocDataList = databaseHelper.getAllData();
 				
 				
 				
